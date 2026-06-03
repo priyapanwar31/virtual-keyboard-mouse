@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Virtual Keyboard & Mouse</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3352;
+    --border2: #3d4470;
+    --text: #e8ecff;
+    --text2: #7a84b3;
+    --text3: #4a5280;
+    --accent: #4f6ef7;
+    --accent2: #7b94fa;
+    --success: #3ecf8e;
+    --warn: #f59e0b;
+    --danger: #f87171;
+    --key-bg: #1e2236;
+    --key-top: #252a44;
+    --key-shadow: #10131e;
+    --font: 'JetBrains Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem 3rem;
+  }
+
+  h1 {
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    color: var(--text3);
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+  }
+
+  .label {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--text3);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  /* Output */
+  #output-wrap {
+    width: 100%;
+    max-width: 780px;
+    margin-bottom: 1.25rem;
+  }
+  #output {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    color: var(--text);
+    word-break: break-all;
+    line-height: 1.6;
+  }
+  #text-out { flex: 1; white-space: pre-wrap; }
+  #cursor {
+    width: 2px; height: 18px;
+    background: var(--accent2);
+    animation: blink 1s step-end infinite;
+    flex-shrink: 0;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* Pills */
+  .pills {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    max-width: 780px;
+    width: 100%;
+    margin-bottom: 1.25rem;
+  }
+  .pill {
+    font-size: 10px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    color: var(--text3);
+    background: var(--surface);
+    letter-spacing: 0.08em;
+    transition: all 0.15s;
+  }
+  .pill.on {
+    background: rgba(79,110,247,0.15);
+    border-color: var(--accent);
+    color: var(--accent2);
+  }
+
+  /* Keyboard */
+  #keyboard-wrap {
+    width: 100%;
+    max-width: 780px;
+    margin-bottom: 1.5rem;
+  }
+  .kb { display: flex; flex-direction: column; gap: 5px; user-select: none; }
+  .kb-row { display: flex; gap: 4px; }
+
+  .key {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--key-top);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    box-shadow: 0 3px 0 var(--key-shadow), 0 1px 0 var(--border);
+    height: 42px;
+    min-width: 38px;
+    padding: 0 6px;
+    font-size: 11px;
+    font-family: var(--font);
+    color: var(--text);
+    cursor: pointer;
+    transition: transform 0.06s, box-shadow 0.06s, background 0.06s;
+    white-space: nowrap;
+    line-height: 1;
+  }
+  .key .shift-char {
+    font-size: 8px;
+    color: var(--text3);
+    margin-bottom: 1px;
+  }
+  .key:hover { background: var(--surface2); border-color: var(--accent); }
+  .key.pressed, .key:active {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 var(--key-shadow);
+    background: var(--surface);
+  }
+  .key.active-mod {
+    background: rgba(79,110,247,0.18);
+    border-color: var(--accent);
+    color: var(--accent2);
+    box-shadow: 0 3px 0 rgba(30,40,80,0.8);
+  }
+  .key.w2  { min-width: 56px; }
+  .key.w25 { min-width: 66px; }
+  .key.w3  { min-width: 80px; }
+  .key.w4  { min-width: 104px; }
+  .key.w5  { min-width: 130px; }
+  .key.space { flex: 1; }
+
+  /* Mouse area */
+  #mouse-wrap {
+    width: 100%;
+    max-width: 780px;
+    display: flex;
+    gap: 1.5rem;
+    align-items: flex-start;
+  }
+  #trackpad-container { flex-shrink: 0; }
+  #trackpad {
+    width: 240px;
+    height: 150px;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 14px;
+    position: relative;
+    cursor: crosshair;
+    overflow: hidden;
+  }
+  #trackpad::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 50%, rgba(79,110,247,0.03) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  #tp-dot {
+    width: 10px; height: 10px;
+    background: var(--accent2);
+    border-radius: 50%;
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    transition: top 0.04s, left 0.04s;
+    pointer-events: none;
+    box-shadow: 0 0 8px var(--accent);
+  }
+  #tp-ring {
+    width: 24px; height: 24px;
+    border: 1.5px solid var(--accent2);
+    border-radius: 50%;
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    opacity: 0;
+    transition: opacity 0.2s, top 0.04s, left 0.04s;
+    pointer-events: none;
+  }
+  #tp-ring.show { opacity: 0.5; }
+  #coord {
+    font-size: 10px;
+    color: var(--text3);
+    margin-top: 6px;
+    letter-spacing: 0.08em;
+  }
+
+  .mouse-btns {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+  }
+  .mbtn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--key-top);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    box-shadow: 0 3px 0 var(--key-shadow);
+    padding: 9px 14px;
+    font-size: 12px;
+    font-family: var(--font);
+    color: var(--text);
+    cursor: pointer;
+    transition: transform 0.06s, box-shadow 0.06s, background 0.06s;
+    text-align: left;
+  }
+  .mbtn .icon { font-size: 16px; color: var(--accent2); }
+  .mbtn:hover { background: var(--surface2); border-color: var(--accent); }
+  .mbtn:active, .mbtn.pressed {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 var(--key-shadow);
+    background: var(--surface);
+  }
+  .mbtn .shortcut { margin-left: auto; font-size: 10px; color: var(--text3); }
+
+  /* Scroll area */
+  #scroll-hint {
+    font-size: 10px;
+    color: var(--text3);
+    margin-top: 4px;
+    text-align: center;
+    letter-spacing: 0.06em;
+  }
+</style>
+</head>
+<body>
+
+<h1>Virtual Keyboard &amp; Mouse</h1>
+
+<!-- Output -->
+<div id="output-wrap">
+  <div class="label">output</div>
+  <div id="output">
+    <span id="text-out"></span>
+    <div id="cursor"></div>
+  </div>
+</div>
+
+<!-- Modifier Pills -->
+<div class="pills">
+  <div class="pill" id="pill-caps">Caps Lock</div>
+  <div class="pill" id="pill-shift">Shift</div>
+  <div class="pill" id="pill-ctrl">Ctrl</div>
+  <div class="pill" id="pill-alt">Alt</div>
+</div>
+
+<!-- Keyboard -->
+<div id="keyboard-wrap">
+  <div class="label">keyboard</div>
+  <div class="kb" id="kb"></div>
+</div>
+
+<!-- Mouse -->
+<div id="mouse-wrap">
+  <div id="trackpad-container">
+    <div class="label">trackpad</div>
+    <div id="trackpad">
+      <div id="tp-dot"></div>
+      <div id="tp-ring"></div>
+    </div>
+    <div id="coord">x: 0 &nbsp; y: 0</div>
+  </div>
+  <div>
+    <div class="label">mouse buttons</div>
+    <div class="mouse-btns">
+      <button class="mbtn" id="btn-lc">
+        <span class="icon">&#x1F5B1;</span> Left Click
+        <span class="shortcut">LMB</span>
+      </button>
+      <button class="mbtn" id="btn-rc">
+        <span class="icon">&#x1F5B1;</span> Right Click
+        <span class="shortcut">RMB</span>
+      </button>
+      <button class="mbtn" id="btn-dc">
+        <span class="icon">&#x1F5B1;</span> Double Click
+        <span class="shortcut">2×LMB</span>
+      </button>
+      <button class="mbtn" id="btn-su">
+        <span class="icon">&#x2191;</span> Scroll Up
+        <span class="shortcut">↑</span>
+      </button>
+      <button class="mbtn" id="btn-sd">
+        <span class="icon">&#x2193;</span> Scroll Down
+        <span class="shortcut">↓</span>
+      </button>
+    </div>
+    <div id="scroll-hint">drag inside trackpad to move cursor</div>
+  </div>
+</div>
+
+<script>
+const rows = [
+  [
+    {l:'~',s:'`',v:'`'},{l:'!',s:'1',v:'1'},{l:'@',s:'2',v:'2'},{l:'#',s:'3',v:'3'},
+    {l:'$',s:'4',v:'4'},{l:'%',s:'5',v:'5'},{l:'^',s:'6',v:'6'},{l:'&',s:'7',v:'7'},
+    {l:'*',s:'8',v:'8'},{l:'(',s:'9',v:'9'},{l:')',s:'0',v:'0'},{l:'_',s:'-',v:'-'},
+    {l:'+',s:'=',v:'='},{l:'⌫',v:'BACKSPACE',w:'w3'}
+  ],
+  [
+    {l:'Tab',v:'TAB',w:'w3'},{l:'Q',v:'q'},{l:'W',v:'w'},{l:'E',v:'e'},{l:'R',v:'r'},
+    {l:'T',v:'t'},{l:'Y',v:'y'},{l:'U',v:'u'},{l:'I',v:'i'},{l:'O',v:'o'},{l:'P',v:'p'},
+    {l:'{',s:'[',v:'['},{l:'}',s:']',v:']'},{l:'|',s:'\\',v:'\\',w:'w25'}
+  ],
+  [
+    {l:'Caps',v:'CAPS',w:'w3'},{l:'A',v:'a'},{l:'S',v:'s'},{l:'D',v:'d'},{l:'F',v:'f'},
+    {l:'G',v:'g'},{l:'H',v:'h'},{l:'J',v:'j'},{l:'K',v:'k'},{l:'L',v:'l'},
+    {l:':',s:';',v:';'},{l:'"',s:"'",v:"'"},{l:'Enter',v:'ENTER',w:'w4'}
+  ],
+  [
+    {l:'⇧ Shift',v:'SHIFT',w:'w4'},{l:'Z',v:'z'},{l:'X',v:'x'},{l:'C',v:'c'},{l:'V',v:'v'},
+    {l:'B',v:'b'},{l:'N',v:'n'},{l:'M',v:'m'},{l:'<',s:',',v:','},{l:'>',s:'.',v:'.'},
+    {l:'?',s:'/',v:'/'},{l:'⇧ Shift',v:'SHIFT',w:'w4'}
+  ],
+  [
+    {l:'Ctrl',v:'CTRL',w:'w3'},{l:'Alt',v:'ALT',w:'w25'},
+    {l:'',v:'SPACE',w:'space'},
+    {l:'Alt',v:'ALT',w:'w25'},{l:'Ctrl',v:'CTRL',w:'w3'},
+    {l:'◀',v:'LEFT'},{l:'▼',v:'DOWN'},{l:'▲',v:'UP'},{l:'▶',v:'RIGHT'}
+  ]
+];
+
+const shiftMap = {
+  '`':'~','1':'!','2':'@','3':'#','4':'$','5':'%','6':'^','7':'&',
+  '8':'*','9':'(','0':')','-':'_','=':'+','[':'{',']':'}','\\':'|',
+  ';':':','\'':'"',',':'<','.':'>','/':'?'
+};
+
+let text='', caps=false, shift=false, ctrl=false, alt=false;
+const textOut = document.getElementById('text-out');
+
+function render() { textOut.textContent = text; }
+function updatePills() {
+  document.getElementById('pill-caps').className = 'pill' + (caps?' on':'');
+  document.getElementById('pill-shift').className = 'pill' + (shift?' on':'');
+  document.getElementById('pill-ctrl').className = 'pill' + (ctrl?' on':'');
+  document.getElementById('pill-alt').className = 'pill' + (alt?' on':'');
+}
+
+function handleKey(v) {
+  if (v === 'CAPS') { caps = !caps; updatePills(); return; }
+  if (v === 'SHIFT') { shift = !shift; updatePills(); return; }
+  if (v === 'CTRL') { ctrl = !ctrl; updatePills(); return; }
+  if (v === 'ALT') { alt = !alt; updatePills(); return; }
+
+  if (ctrl) {
+    if (v === 'a') text = '';
+    else if (v === 'z') text = text.slice(0, -1);
+    else if (v === 'v') text += '[paste]';
+    else if (v === 'c') flashOutput();
+    render(); ctrl = false; updatePills(); return;
+  }
+
+  if (v === 'BACKSPACE') { text = text.slice(0, -1); render(); return; }
+  if (v === 'ENTER')     { text += '\n'; render(); return; }
+  if (v === 'TAB')       { text += '    '; render(); return; }
+  if (v === 'SPACE')     { text += ' '; render(); return; }
+  if (['LEFT','RIGHT','UP','DOWN'].includes(v)) return;
+
+  if (v.length !== 1) return;
+  let ch = v;
+  if (shift || caps) {
+    ch = shiftMap[v] || (caps ? v.toUpperCase() : v);
+    if (shift) { shift = false; updatePills(); }
+  }
+  text += ch;
+  render();
+}
+
+function flashOutput() {
+  const o = document.getElementById('output');
+  o.style.borderColor = 'var(--success)';
+  setTimeout(() => o.style.borderColor = '', 400);
+}
+
+// Build keyboard
+const kb = document.getElementById('kb');
+rows.forEach(row => {
+  const rowDiv = document.createElement('div');
+  rowDiv.className = 'kb-row';
+  row.forEach(k => {
+    const btn = document.createElement('button');
+    btn.className = 'key' + (k.w ? ' ' + k.w : '');
+    if (k.s) {
+      btn.innerHTML = '<span class="shift-char">' + k.l + '</span>' + k.s;
+    } else {
+      btn.textContent = k.l;
+    }
+    btn.setAttribute('aria-label', k.v);
+    btn.addEventListener('mousedown', () => {
+      btn.classList.add('pressed');
+      handleKey(k.v);
+    });
+    btn.addEventListener('mouseup', () => btn.classList.remove('pressed'));
+    btn.addEventListener('mouseleave', () => btn.classList.remove('pressed'));
+    rowDiv.appendChild(btn);
+  });
+  kb.appendChild(rowDiv);
+});
+
+// Physical keyboard listener
+document.addEventListener('keydown', e => {
+  if (e.repeat) return;
+  const key = e.key;
+  const el = kb.querySelector('[aria-label="' + key.toUpperCase() + '"]') ||
+             kb.querySelector('[aria-label="' + key + '"]');
+  if (el) { el.classList.add('pressed'); }
+  if (key === 'Backspace') handleKey('BACKSPACE');
+  else if (key === 'Enter') handleKey('ENTER');
+  else if (key === 'Tab') { e.preventDefault(); handleKey('TAB'); }
+  else if (key === ' ') handleKey('SPACE');
+  else if (key === 'CapsLock') handleKey('CAPS');
+  else if (key === 'Shift') handleKey('SHIFT');
+  else if (key === 'Control') handleKey('CTRL');
+  else if (key === 'Alt') handleKey('ALT');
+  else if (key === 'ArrowLeft') handleKey('LEFT');
+  else if (key === 'ArrowRight') handleKey('RIGHT');
+  else if (key === 'ArrowUp') handleKey('UP');
+  else if (key === 'ArrowDown') handleKey('DOWN');
+  else if (key.length === 1) handleKey(key);
+});
+document.addEventListener('keyup', e => {
+  const el = kb.querySelector('[aria-label="' + e.key.toUpperCase() + '"]') ||
+             kb.querySelector('[aria-label="' + e.key + '"]');
+  if (el) el.classList.remove('pressed');
+});
+
+// Trackpad
+const pad = document.getElementById('trackpad');
+const dot = document.getElementById('tp-dot');
+const ring = document.getElementById('tp-ring');
+const coordEl = document.getElementById('coord');
+let mouseX = 50, mouseY = 50, dragging = false;
+
+function moveDot(clientX, clientY) {
+  const r = pad.getBoundingClientRect();
+  const px = Math.max(0, Math.min(100, (clientX - r.left) / r.width * 100));
+  const py = Math.max(0, Math.min(100, (clientY - r.top) / r.height * 100));
+  mouseX = Math.round(px); mouseY = Math.round(py);
+  dot.style.left = px + '%'; dot.style.top = py + '%';
+  ring.style.left = px + '%'; ring.style.top = py + '%';
+  coordEl.innerHTML = 'x:&nbsp;' + mouseX + '&nbsp;&nbsp;y:&nbsp;' + mouseY;
+}
+
+pad.addEventListener('mousedown', e => { dragging = true; moveDot(e.clientX, e.clientY); ring.classList.add('show'); });
+window.addEventListener('mousemove', e => { if (dragging) moveDot(e.clientX, e.clientY); });
+window.addEventListener('mouseup', () => { dragging = false; ring.classList.remove('show'); });
+pad.addEventListener('touchstart', e => { e.preventDefault(); dragging = true; moveDot(e.touches[0].clientX, e.touches[0].clientY); ring.classList.add('show'); }, {passive:false});
+pad.addEventListener('touchmove', e => { e.preventDefault(); moveDot(e.touches[0].clientX, e.touches[0].clientY); }, {passive:false});
+pad.addEventListener('touchend', () => { dragging = false; ring.classList.remove('show'); });
+
+function flashBtn(id, msg) {
+  const b = document.getElementById(id);
+  b.classList.add('pressed');
+  setTimeout(() => b.classList.remove('pressed'), 180);
+  text += msg; render();
+}
+
+document.getElementById('btn-lc').addEventListener('click', () => flashBtn('btn-lc', '[L@' + mouseX + ',' + mouseY + ']'));
+document.getElementById('btn-rc').addEventListener('click', () => flashBtn('btn-rc', '[R@' + mouseX + ',' + mouseY + ']'));
+document.getElementById('btn-dc').addEventListener('click', () => flashBtn('btn-dc', '[Dbl@' + mouseX + ',' + mouseY + ']'));
+document.getElementById('btn-su').addEventListener('click', () => flashBtn('btn-su', '[↑scroll]'));
+document.getElementById('btn-sd').addEventListener('click', () => flashBtn('btn-sd', '[↓scroll]'));
+</script>
+</body>
+</html>
