@@ -14,5 +14,3 @@ A web-based virtual keyboard and mouse simulator built using HTML, CSS, and Java
 - CSS
 - JavaScript
 
-## Note
-This project was developed with the assistance of AI tools and customized for learning purposes.![Uploading image.png…]()
